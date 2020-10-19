@@ -131,7 +131,7 @@ def calc_optimal_overhead(hmd_orientation, frame_orientation, hmd_projection):
 #	return [-margins, margins, margins, -margins]
 	return [-np.abs(p_l),np.abs(p_t),np.abs(p_r),-np.abs(p_b)]
 
-def predictive_overfilling(input_orientation, prediction, input_projection):
+def Robust_overfilling(input_orientation, prediction, input_projection):
 	IPD = input_projection[2]-input_projection[0]
 	h = (input_projection[1]-input_projection[3])/2
 	r = np.sqrt(h**2+1/4*IPD**2)
@@ -501,17 +501,17 @@ input_orientation = orie_data[:-anticipation_size]
 prediction = pred_orie_data[anticipation_size:]	# current quaternion orientation
 input_projection = proj_data		# predicted quaternion orientation, obtained (anticipation_time) before
 
-predictive_values = np.empty((0,4), dtype=np.float32)
+robust_values = np.empty((0,4), dtype=np.float32)
 
 for i in range(0, len(input_orientation)+anticipation_size):
 	if (i<len(input_orientation)):
 
-		overhead_val = predictive_overfilling(input_orientation[i], prediction[i], input_projection[i])
-		predictive_values = np.vstack((predictive_values,overhead_val))
+		overhead_val = Robust_overfilling(input_orientation[i], prediction[i], input_projection[i])
+		robust_values = np.vstack((robust_values,overhead_val))
 	else:
-		predictive_values = np.vstack((predictive_values, input_projection[i]))
+		robust_values = np.vstack((robust_values, input_projection[i]))
 
-raw_predictive_data = np.column_stack(
+raw_robust_data = np.column_stack(
 	[timestamp, 
 	bios_data, 
 	gyro_data, 
@@ -524,7 +524,7 @@ raw_predictive_data = np.column_stack(
 	# because this is optimal, we use actual data as we already know the actual position in the future
 	quat_data, # use pred_quat_data for predicted
 	orie_data, # use pred_orie_data for predicted
-	predictive_values
+	robust_values
 	]
 )
 
@@ -561,7 +561,7 @@ df = pd.DataFrame(raw_pred_data,columns = ['timestamp',
 export_csv = df.to_csv (str(outFile2), index = None, header=True)
 
 # write the predicted one into file 
-df = pd.DataFrame(raw_predictive_data,columns = ['timestamp',
+df = pd.DataFrame(raw_robust_data,columns = ['timestamp',
 							'biosignal_0', 'biosignal_1', 'biosignal_2', 'biosignal_3', 'biosignal_4', 'biosignal_5', 'biosignal_6', 'biosignal_7',
 							'angular_vec_x', 'angular_vec_y', 'angular_vec_z',
 							'acceleration_x', 'acceleration_y', 'acceleration_z',
@@ -584,7 +584,7 @@ export_csv = df.to_csv (str(outFile3), index = None, header=True)
 plt.figure()
 plt.plot((timestamp-timestamp[0])/705600000, abs(optimal_values[:, 0])-1, linewidth=1)
 plt.plot((timestamp-timestamp[0])/705600000, abs(pred_values[:, 0])-1, linewidth=1)
-plt.plot((timestamp-timestamp[0])/705600000, abs(predictive_values[:, 0])-1, linewidth=1)
+plt.plot((timestamp-timestamp[0])/705600000, abs(robust_values[:, 0])-1, linewidth=1)
 plt.legend(['Optimal','Predictive','Robust'])
 plt.title('Margins (Left) Comparison')
 plt.grid()
@@ -595,7 +595,7 @@ plt.ylabel('Margins')
 plt.figure()
 plt.plot((timestamp-timestamp[0])/705600000, abs(optimal_values[:, 1])-1, linewidth=1)
 plt.plot((timestamp-timestamp[0])/705600000, abs(pred_values[:, 1])-1, linewidth=1)
-plt.plot((timestamp-timestamp[0])/705600000, abs(predictive_values[:, 1])-1, linewidth=1)
+plt.plot((timestamp-timestamp[0])/705600000, abs(robust_values[:, 1])-1, linewidth=1)
 plt.legend(['Optimal','Predictive','Robust'])
 plt.title('Margins (Top) Comparison')
 plt.grid()
@@ -606,7 +606,7 @@ plt.ylabel('Margins')
 plt.figure()
 plt.plot((timestamp-timestamp[0])/705600000, abs(optimal_values[:, 2])-1, linewidth=1)
 plt.plot((timestamp-timestamp[0])/705600000, abs(pred_values[:, 2])-1, linewidth=1)
-plt.plot((timestamp-timestamp[0])/705600000, abs(predictive_values[:, 2])-1, linewidth=1)
+plt.plot((timestamp-timestamp[0])/705600000, abs(robust_values[:, 2])-1, linewidth=1)
 plt.legend(['Optimal','Predictive','Robust'])
 plt.title('Margins (Right) Comparison')
 plt.grid()
@@ -617,7 +617,7 @@ plt.ylabel('Margins')
 plt.figure()
 plt.plot((timestamp-timestamp[0])/705600000, abs(optimal_values[:, 3])-1, linewidth=1)
 plt.plot((timestamp-timestamp[0])/705600000, abs(pred_values[:, 3])-1, linewidth=1)
-plt.plot((timestamp-timestamp[0])/705600000, abs(predictive_values[:, 3])-1, linewidth=1)
+plt.plot((timestamp-timestamp[0])/705600000, abs(robust_values[:, 3])-1, linewidth=1)
 plt.legend(['Optimal','Predictive','Robust'])
 plt.title('Margins (Bottom) Comparison')
 plt.grid()
@@ -626,28 +626,28 @@ plt.ylabel('Margins')
 
 plt.show()
 
-overfill_mae_test = np.nanmean(np.abs(abs(pred_values)-abs(optimal_values)), axis=0)
-rms_stream_test = np.apply_along_axis(rms,1,np.abs(abs(pred_values)-abs(optimal_values)))
-overfill_rms_test = np.nanmean(rms_stream_test)
+#overfill_mae_test = np.nanmean(np.abs(abs(pred_values)-abs(optimal_values)), axis=0)
+#rms_stream_test = np.apply_along_axis(rms,1,np.abs(abs(pred_values)-abs(optimal_values)))
+#overfill_rms_test = np.nanmean(rms_stream_test)
 
 
-print('MAE [Left, Top, Right, Bottom]: {:.2f}, {:.2f}, {:.2f}, {:.2f}'.format(overfill_mae_test[0], overfill_mae_test[1], overfill_mae_test[2], overfill_mae_test[3]))
-print('RMS: {:.2f}'.format(overfill_rms_test))
+#print('MAE [Left, Top, Right, Bottom]: {:.2f}, {:.2f}, {:.2f}, {:.2f}'.format(overfill_mae_test[0], overfill_mae_test[1], overfill_mae_test[2], overfill_mae_test[3]))
+#print('RMS: {:.2f}'.format(overfill_rms_test))
 
 #*** NEWEST OPTIMIZATION PART WILL BE HERE***#
 
 
 #Overfilling Calculation
-pred_size = (predictive_values[:,2]-predictive_values[:,0])*(predictive_values[:,1]-predictive_values[:,3])
+robust_size = (robust_values[:,2]-robust_values[:,0])*(robust_values[:,1]-robust_values[:,3])
 opt_size = (optimal_values[:,2]-optimal_values[:,0])*(optimal_values[:,1]-optimal_values[:,3])
 
-pred_overfill = (pred_size/4-1)*100
+robust_overfill = (robust_size/4-1)*100
 opt_overfill = (opt_size/4-1)*100
 
-overfill99 = np.nanpercentile(pred_overfill,1)
+overfill99 = np.nanpercentile(robust_overfill,1)
 
 plt.figure()
-x = np.sort(pred_overfill)
+x = np.sort(robust_overfill)
 y = np.arange(1, len(x)+1)/len(x)
 plt.plot(x, y, marker='.', linestyle='none')
 plt.xlabel('Percentage of OverHead Projection (%)')
