@@ -133,7 +133,7 @@ def calc_optimal_overhead(hmd_orientation, frame_orientation, hmd_projection):
 
 def Robust_overfilling(input_orientation, prediction, input_projection):
 	IPD = input_projection[2]-input_projection[0]
-	h = (input_projection[1]-input_projection[3])/2
+	h = 1
 	r = np.sqrt(h**2+1/4*IPD**2)
 	
 	input_angle = np.arctan(IPD/(2*h))
@@ -141,35 +141,27 @@ def Robust_overfilling(input_orientation, prediction, input_projection):
 	roll_diff = prediction[1]-input_orientation[1]
 	yaw_diff = prediction[2]-input_orientation[2]
 	
-	if(yaw_diff<0):
-		x_r = r*np.sin(input_angle-yaw_diff)
-		x_l = min(input_projection[0],-r*np.sin(input_angle+yaw_diff))
-	else:
-		x_r = max(input_projection[2],r*np.sin(input_angle-yaw_diff))
-		x_l = -r*np.sin(input_angle+yaw_diff)
+	x_r = max(input_projection[2],r*np.sin(input_angle-yaw_diff))
+	x_l = min(input_projection[0],-r*np.sin(input_angle+yaw_diff))
 	
-	if(pitch_diff<0):
-		x_t = r*np.sin(input_angle+pitch_diff)
-		x_b = min(input_projection[3],-r*np.sin(input_angle+pitch_diff))
-	else:
-		x_t = max(input_projection[2],r*np.sin(input_angle+pitch_diff))
-		x_b = -r*np.sin(input_angle+pitch_diff)
-		
+	y_t = max(input_projection[1],r*np.sin(input_angle+pitch_diff))
+	y_b = min(input_projection[3],-r*np.sin(input_angle-pitch_diff))
+
 	if (roll_diff<0):
 		x_rr = r*np.sin(input_angle-roll_diff)
 		x_ll = -r*np.sin(input_angle-roll_diff)
-		x_tt = r*np.cos(input_angle+roll_diff)
-		x_bb = -r*np.cos(input_angle+roll_diff)
+		y_tt = r*np.cos(input_angle+roll_diff)
+		y_bb = -r*np.cos(input_angle+roll_diff)
 	else:
 		x_rr = r*np.sin(input_angle+roll_diff)
 		x_ll = -r*np.sin(input_angle+roll_diff)
-		x_tt = r*np.cos(input_angle-roll_diff)
-		x_bb = -r*np.cos(input_angle-roll_diff)
+		y_tt = r*np.cos(input_angle-roll_diff)
+		y_bb = -r*np.cos(input_angle-roll_diff)
 	
 	p_r = x_r+x_rr-IPD/2
 	p_l = x_l+x_ll+IPD/2
-	p_t = x_t+x_tt-IPD/2
-	p_b = x_b+x_bb+IPD/2
+	p_t = y_t+y_tt-IPD/2
+	p_b = y_b+y_bb+IPD/2
 	
 	return [-np.abs(p_l),np.abs(p_t),np.abs(p_r),-np.abs(p_b)]
 	
