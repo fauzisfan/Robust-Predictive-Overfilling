@@ -66,15 +66,8 @@ def calc_optimal_overhead(hmd_orientation, frame_orientation, hmd_projection):
 	p_r = max(p_lt[0], p_rt[0], p_rb[0], p_lb[0])
 	p_b = min(p_lt[1], p_rt[1], p_rb[1], p_lb[1])
 	
-	size = max(p_r - p_l, p_t - p_b)
-	a_overfilling = size * size
-	
-	a_hmd = (hmd_projection[2] - hmd_projection[0]) * (hmd_projection[1] - hmd_projection[3])
-	
-
 #	return [-np.abs(p_l),np.abs(p_t),np.abs(p_r),-np.abs(p_b)]
 	margins = np.max(np.abs([p_l, p_t, p_r, p_b]))
-#	return (a_overfilling / a_hmd - 1)*100, [-margins, margins, margins, -margins]
 	return [-margins, margins, margins, -margins]
 
 def Robust_overfilling(input_orientation, prediction, input_projection, fixed_param):
