@@ -71,50 +71,69 @@ def calc_optimal_overhead(hmd_orientation, frame_orientation, hmd_projection):
 	return [-margins, margins, margins, -margins]
 
 def Robust_overfilling(input_orientation, prediction, input_projection, fixed_param):
-	IPD = input_projection[2]-input_projection[0]
-	h = 1
-	r = np.sqrt(h**2+1/4*IPD**2)
+	#Get Input Projection Distance for each side in x,y coordinate
+	IPDx = input_projection[2]-input_projection[0]
+	IPDy = input_projection[1]-input_projection[3]
 	
-	input_angle = np.arctan(IPD/(2*h))
+	#Define projection distance to the user
+	h = 1
+	
+	#Get the corner point distance to the rotation center for each side in x,y coordinate
+	rx = np.sqrt(h**2+1/4*IPDx**2)
+	ry = np.sqrt(h**2+1/4*IPDy**2)
+	
+	#Get initial input angle to the rotational center
+	input_anglex = np.arctan(IPDx/(2*h))
+	input_angley = np.arctan(IPDx/(2*h))
+	
+	#Get user's direction based on prediction motion
 	pitch_diff = prediction[0]-input_orientation[0]
 	roll_diff = prediction[1]-input_orientation[1]
 	yaw_diff = prediction[2]-input_orientation[2]
 	
-	x_r = max(input_projection[2],r*np.sin(input_angle-yaw_diff))
-	x_l = min(input_projection[0],-r*np.sin(input_angle+yaw_diff))
-	
-	y_t = max(input_projection[1],r*np.sin(input_angle+pitch_diff))
-	y_b = min(input_projection[3],-r*np.sin(input_angle-pitch_diff))
+	#Calculate predicted margin based on translation movement
+	x_r = max(input_projection[2],rx*np.sin(input_anglex-yaw_diff))
+	x_l = min(input_projection[0],-rx*np.sin(input_anglex+yaw_diff))
+	y_t = max(input_projection[1],ry*np.sin(input_angley+pitch_diff))
+	y_b = min(input_projection[3],-ry*np.sin(input_angley-pitch_diff))
 
-	if (roll_diff<0):
-		x_rr = r*np.sin(input_angle-roll_diff)
-		x_ll = -r*np.sin(input_angle-roll_diff)
-		y_tt = r*np.cos(input_angle+roll_diff)
-		y_bb = -r*np.cos(input_angle+roll_diff)
-	else:
-		x_rr = r*np.sin(input_angle+roll_diff)
-		x_ll = -r*np.sin(input_angle+roll_diff)
-		y_tt = r*np.cos(input_angle-roll_diff)
-		y_bb = -r*np.cos(input_angle-roll_diff)
+	#Calculate predicted margin based on rotational movement
+	x_rr = rx*np.sin(input_anglex+abs(roll_diff))
+	x_ll = -rx*np.sin(input_anglex+abs(roll_diff))
+	y_tt = ry*np.cos(input_angley-abs(roll_diff))
+	y_bb = -ry*np.cos(input_angley-abs(roll_diff))
 	
-	p_r = x_r+x_rr-IPD/2
-	p_l = x_l+x_ll+IPD/2
-	p_t = y_t+y_tt-IPD/2
-	p_b = y_b+y_bb+IPD/2
+	#Calculate final movement
+	p_r = x_r+x_rr-IPDx/2
+	p_l = x_l+x_ll+IPDx/2
+	p_t = y_t+y_tt-IPDy/2
+	p_b = y_b+y_bb+IPDy/2
 	
-#	p_r = np.sqrt(abs(p_r-p_l)**2+1)-abs(p_l)
-#	p_l = np.sqrt(abs(p_l-p_r)**2+1)-p_r
-#	p_t = np.sqrt(abs(p_t-p_b)**2+1)-abs(p_b)
-#	p_b = np.sqrt(abs(p_b-p_t)**2+1)-p_t
+	'Enhancement'
+##	#get largest point
+#	z_yaw = abs(h-rx*np.cos(input_anglex+abs(yaw_diff)))
+#	z_pitch = abs(h-ry*np.cos(input_angley+abs(pitch_diff)))
+
+#	if (yaw_diff<0):
+#		p_r = np.sqrt(abs(p_r-p_l)**2+z_yaw**2)+p_l
+#	else: 
+#		p_l = np.sqrt(abs(p_l-p_r)**2+z_yaw**2)-p_r
+#	if (pitch_diff>0):
+#		p_t = np.sqrt(abs(p_t-p_b)**2+z_pitch**2)+p_b
+#	else :
+#		p_b = np.sqrt(abs(p_b-p_t)**2+z_pitch**2)-p_t
 	
+	'Enhancement ver 2'
+#	Get dilatation on high velocity
 	p_r = max(p_r*(np.sin(abs(yaw_diff))*(fixed_param-1)+1),p_r*(np.sin(abs(pitch_diff))*(fixed_param-1)+1))
 	p_l = min(p_l*(np.sin(abs(yaw_diff))*(fixed_param-1)+1),p_l*(np.sin(abs(pitch_diff))*(fixed_param-1)+1))
 	p_t = max(p_t*(np.sin(abs(pitch_diff))*(fixed_param-1)+1),p_t*(np.sin(abs(yaw_diff))*(fixed_param-1)+1))
 	p_b = min(p_b*(np.sin(abs(pitch_diff))*(fixed_param-1)+1), p_b*(np.sin(abs(yaw_diff))*(fixed_param-1)+1))
 	
-#	return [-np.abs(p_l),np.abs(p_t),np.abs(p_r),-np.abs(p_b)]
-	margins = np.max(np.abs([p_l, p_t, p_r, p_b]))
-	return [-margins, margins, margins, -margins]
+	return [-np.abs(p_l),np.abs(p_t),np.abs(p_r),-np.abs(p_b)]
+#	margins = np.max(np.abs([p_l, p_t, p_r, p_b]))
+#	return [-margins, margins, margins, -margins]
+
 
 # File name of the trace file
 inFile = "s20200915_scene(3)_user(1)_(300).csv"
